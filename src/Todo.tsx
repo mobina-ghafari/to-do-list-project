@@ -37,7 +37,7 @@ import StatusChart from "./Chart";
 
 // ایجاد آیتم‌های اولیه
 const initialRows = [
-    { id: 1, title: "Config", priority: priority.HIGH, datetime: new Date('2024-11-05T12:02:17'), status: status.DONE },
+    { id: 1, title: "Config", priority: priority.LOW, datetime: new Date('2024-11-05T12:02:17'), status: status.DONE },
     { id: 2, title: "Menu Bar", priority: priority.LOW, datetime: new Date('2024-11-01T08:00:00'), status: status.DONE },
     { id: 3, title: "Timer", priority: priority.LOW, datetime: new Date('2024-10-01T07:02:55'), status: status.WARNING },
     { id: 4, title: "Main Navigation", priority: priority.MEDIUM, datetime: new Date('2024-09-14T17:32:06'), status: status.PENDING },
@@ -65,6 +65,7 @@ const Todo = () => {
     const [inputHash, setInputHash] = useState("");
     const [openAddDialog, setOpenAddDialog] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState("");
+    const [newTaskStatus, setNewTaskStatus] = useState<status>(status.PENDING);
     const [newTaskPriority, setNewTaskPriority] = useState<priority>(priority.LOW);
     const [editTodoTitle, setEditTodoTitle] = useState<string>("");
     const [editTodoPriority, setEditTodoPriority] = useState<priority>(priority.LOW);
@@ -72,6 +73,7 @@ const Todo = () => {
     const [openEditDialog, setOpenEditDialog] = useState<boolean>(false);
     const [alertSeverity, setAlertSeverity] = useState<"success" | "error">("success");
     const [searchQuery, setSearchQuery] = useState("");
+
 
     const statusCounts = getStatusCounts(todoItem); // محاسبه تعداد وضعیت‌ها
 
@@ -88,6 +90,7 @@ const Todo = () => {
         const timer = setInterval(() => setCurrentDate(new Date().toLocaleString()), 1000);
         return () => clearInterval(timer);
     }, []);
+    
 
     // به‌روزرسانی estimate هر ساعت
     useEffect(() => {
@@ -142,15 +145,19 @@ const Todo = () => {
 
     // افزودن آیتم جدید
     const handleAddTask = () => {
-        // اضافه کردن تسک جدید
         if (newTaskTitle.trim() === "") {
             setAlertMessage("Task title cannot be empty.");
             setAlertSeverity("error");
             return;
         }
         const newId = todoItem.length + 1;
-        const newTask = createData(newId, newTaskTitle, newTaskPriority, new Date(), status.PENDING);
-        setTodoItem([...todoItem, newTask]);
+        const newTask = createData(newId, newTaskTitle, newTaskPriority, new Date(), newTaskStatus);
+        const updatedItems = [...todoItem, newTask];
+        updatedItems.sort((a, b) => {
+            const priorityOrder = { LOW: 1, MEDIUM: 2, HIGH: 3 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
+        setTodoItem(updatedItems);
         setAlertMessage("Task added successfully");
         setAlertSeverity("success");
         setOpenAddDialog(false);
@@ -176,6 +183,11 @@ const Todo = () => {
         const updatedTodo = todoItem.map((item) =>
             item.id === selectedTaskId ? { ...item, title: editTodoTitle, priority: editTodoPriority, status: editTodoStatus } : item
         );
+        // مرتب کردن تسک‌ها طبق priority
+        updatedTodo.sort((a, b) => {
+            const priorityOrder = { LOW: 1, MEDIUM: 2, HIGH: 3 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
         setTodoItem(updatedTodo);
         setAlertMessage("Task edited successfully");
         setAlertSeverity("success");
@@ -184,10 +196,7 @@ const Todo = () => {
 
     // تابع بازنشانی
     const handleReset = () => {
-    // پاک کردن localStorage
     localStorage.removeItem("todoItems");
-
-    // برگرداندن لیست وظایف به حالت اولیه
     setTodoItem(initialRows.map(item => createData(item.id, item.title, item.priority, item.datetime, item.status)));
     setAlertMessage("Tasks reset to default");
     setAlertSeverity("success");
@@ -318,6 +327,7 @@ const filteredItems = todoItem.filter((item) => {
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
                     />
+                    {/* فیلد Priority */}
                     <FormControl fullWidth sx={{ mt: 2 }}>
                         <InputLabel>Priority</InputLabel>
                         <Select
@@ -328,6 +338,20 @@ const filteredItems = todoItem.filter((item) => {
                             <MenuItem value={priority.LOW}>Low</MenuItem>
                             <MenuItem value={priority.MEDIUM}>Medium</MenuItem>
                             <MenuItem value={priority.HIGH}>High</MenuItem>
+                        </Select>
+                    </FormControl>
+                    {/* فیلد Status */}
+                    <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            value={newTaskStatus}
+                            label="Status"
+                            onChange={(e) => setNewTaskStatus(e.target.value as status)}
+                        >
+                            <MenuItem value={status.PENDING}>Pending</MenuItem>
+                            <MenuItem value={status.DOING}>Doing</MenuItem>
+                            <MenuItem value={status.DONE}>Done</MenuItem>
+                            <MenuItem value={status.WARNING}>Warning</MenuItem>
                         </Select>
                     </FormControl>
                 </DialogContent>
